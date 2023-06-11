@@ -8,3 +8,5 @@
 *.a
 PSX.Dev-README.md
 third_party/psyq
+
+*/build/*
