@@ -1,13 +1,12 @@
 /*
  * LibPSn00b Example Programs
  *
- * Off-screen Render to Texture Example
+ * Balls Example
  * 2019 - 2021 Meido-Tek Productions / PSn00bSDK Project
  *
- * Demonstrates quick render to texture for multi-texture style effects,
- * view screens and more. This example also shows how to use multiple
- * ordering tables and chaining them together so it can all be rendered
- * with a single DrawOTag() call.
+ * Draws a bunch of ball sprites that bounce around the screen,
+ * along with a ball snake that might be difficult to see.
+ *
  *
  * Example by Lameguy64
  *
@@ -15,164 +14,223 @@
  *
  *	May 10, 2021		- Variable types updated for psxgpu.h changes.
  *
- *  Oct 26, 2019		- Initial version.
+ *  November 20, 2018	- Initial version.
  *
  */
 
-#include <inline_c.h>
+#include <psxetc.h>
 #include <psxgpu.h>
 #include <psxgte.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <sys/types.h>
+#include <stdlib.h>
 
-#define OTLEN                                                                  \
-  8 // Ordering table length (recommended to set as a define
-    // so it can be changed easily)
+#define MAX_BALLS 1024
 
-DISPENV disp[2]; // Display/drawing buffer parameters
-DRAWENV draw[2];
-int db = 0;
+#define OT_LEN 8
 
-// PSn00bSDK requires having all u_long types replaced with
-// u_int, as u_long in modern GCC that PSn00bSDK uses defines it as a 64-bit
-// integer.
+#define SCREEN_XRES 640
+#define SCREEN_YRES 480
 
-u_long ot[2][OTLEN];    // Ordering table length
-char pribuff[2][32768]; // Primitive buffer
-char *nextpri;          // Next primitive pointer
+#define CENTER_X SCREEN_XRES / 2
+#define CENTER_Y SCREEN_YRES / 2
 
-int tim_mode; // TIM image parameters
-RECT tim_prect, tim_crect;
-int tim_uoffs, tim_voffs;
+/* Display and drawing environments */
+DISPENV disp;
+DRAWENV draw;
 
-void display() {
+char pribuff[2][65536]; /* Primitive packet buffers */
+uint32_t ot[2][OT_LEN]; /* Ordering tables */
+char *nextpri;          /* Pointer to next packet buffer offset */
+int db = 0;             /* Double buffer index */
 
-  DrawSync(0); // Wait for any graphics processing to finish
+/* Ball struct and array */
+typedef struct {
+  short x, y;
+  short xdir, ydir;
+  unsigned char r, g, b, p;
+} BALL_TYPE;
 
-  VSync(0); // Wait for vertical retrace
+BALL_TYPE balls[MAX_BALLS];
 
-  PutDispEnv(&disp[db]); // Apply the DISPENV/DRAWENVs
-  PutDrawEnv(&draw[db]);
+/* Ball texture reference */
+extern const uint32_t tim_igu_tile[];
 
-  SetDispMask(1); // Enable the display
+/* TIM image parameters for loading the ball texture and drawing sprites */
+TIM_IMAGE tim;
 
-  DrawOTag(ot[db] + OTLEN - 1); // Draw the ordering table
+volatile int fps;
+volatile int fps_counter;
+volatile int fps_measure;
 
-  db = !db; // Swap buffers on every pass (alternates between 1 and 0)
-  nextpri = pribuff[db]; // Reset next primitive pointer
-}
+void vsync_cb(void) {
 
-// Texture upload function
-void LoadTexture(u_long *tim, TIM_IMAGE *tparam) {
-
-  // Read TIM parameters (PSn00bSDK)
-  GetTimInfo(tim, tparam);
-
-  // Upload pixel data to framebuffer
-  LoadImage(tparam->prect, (u_long *)tparam->paddr);
-  DrawSync(0);
-
-  // Upload CLUT to framebuffer if present
-  if (tparam->mode & 0x8) {
-
-    LoadImage(tparam->crect, (u_long *)tparam->caddr);
-    DrawSync(0);
+  fps_counter++;
+  if (fps_counter >= 60) {
+    fps = fps_measure;
+    fps_measure = 0;
+    fps_counter = 0;
   }
 }
 
-void loadstuff(void) {
+void init() {
 
-  TIM_IMAGE my_image; // TIM image parameters
+  int i;
 
-  extern u_long tim_igu_tile[];
-
-  // Load the texture
-  LoadTexture(tim_igu_tile, &my_image);
-
-  // Copy the TIM coordinates
-  tim_prect = *my_image.prect;
-  tim_crect = *my_image.crect;
-  tim_mode = my_image.mode;
-
-  // Calculate U,V offset for TIMs that are not page aligned
-  tim_uoffs = (tim_prect.x % 64) << (2 - (tim_mode & 0x3));
-  tim_voffs = (tim_prect.y & 0xff);
-}
-
-// To make main look tidy, init stuff has to be moved here
-void init(void) {
-
-  // Reset graphics
+  /* Reset GPU (also installs event handler for VSync) */
+  printf("Init GPU... ");
   ResetGraph(0);
+  FntLoad(960, 0);
+  FntOpen(0, 8, 100, 200, 0, 100);
 
-  // First buffer
-  SetDefDispEnv(&disp[0], 0, 0, 320, 240);
-  SetDefDrawEnv(&draw[0], 0, 240, 320, 240);
-  // Second buffer
-  SetDefDispEnv(&disp[1], 0, 240, 320, 240);
-  SetDefDrawEnv(&draw[1], 0, 0, 320, 240);
+  printf("Done.\n");
 
-  draw[0].isbg = 1;              // Enable clear
-  setRGB0(&draw[0], 63, 0, 127); // Set clear color (dark purple)
-  draw[1].isbg = 1;
-  setRGB0(&draw[1], 63, 0, 127);
+  printf("Set video mode... ");
 
-  nextpri = pribuff[0]; // Set initial primitive pointer address
+  /* Set display and draw environment parameters */
+  SetDefDispEnv(&disp, 0, 0, SCREEN_XRES, SCREEN_YRES);
+  SetDefDrawEnv(&draw, 0, 0, SCREEN_XRES, SCREEN_YRES);
+  disp.isinter = 1; /* Enable interlace (required for hires) */
 
-  // load textures and possibly other stuff
-  loadstuff();
+  /* Set clear color, area clear and dither processing */
+  setRGB0(&draw, 63, 0, 127);
+  draw.isbg = 1;
+  draw.dtd = 1;
 
-  // set tpage of lone texture as initial tpage
-  draw[0].tpage = getTPage(tim_mode & 0x3, 0, tim_prect.x, tim_prect.y);
-  draw[1].tpage = getTPage(tim_mode & 0x3, 0, tim_prect.x, tim_prect.y);
+  /* Apply the display and drawing environments */
+  PutDispEnv(&disp);
+  PutDrawEnv(&draw);
 
-  // apply initial drawing environment
-  PutDrawEnv(&draw[!db]);
+  /* Enable video output */
+  SetDispMask(1);
+
+  printf("Done.\n");
+
+  /* Upload the ball texture */
+  printf("Upload texture... ");
+  GetTimInfo(tim_igu_tile, &tim); /* Get TIM parameters */
+
+  LoadImage(tim.prect, tim.paddr); /* Upload texture to VRAM */
+  if (tim.mode & 0x8) {
+    LoadImage(tim.crect, tim.caddr); /* Upload CLUT if present */
+  }
+
+  printf("Done.\n");
+
+  /* Calculate ball positions */
+  printf("Calculating balls... ");
+
+  for (i = 0; i < MAX_BALLS; i++) {
+
+    balls[i].x = (rand() % 624);
+    balls[i].y = (rand() % 464);
+    balls[i].xdir = 1 - (rand() % 3);
+    balls[i].ydir = 1 - (rand() % 3);
+    if (!balls[i].xdir)
+      balls[i].xdir = 1;
+    if (!balls[i].ydir)
+      balls[i].ydir = 1;
+    balls[i].xdir *= 2;
+    balls[i].ydir *= 2;
+    balls[i].r = (rand() % 256);
+    balls[i].g = (rand() % 256);
+    balls[i].b = (rand() % 256);
+  }
+
+  printf("Done.\n");
 }
 
-int main() {
+int main(int argc, const char *argv[]) {
 
-  TILE *tile; // Pointer for TILE
-  SPRT *sprt; // Pointer for SPRT
+  SPRT_16 *sprt;
+  DR_TPAGE *tpri;
 
-  // Init stuff
+  int i, counter = 0;
+
+  /* Init graphics and stuff before doing anything else */
   init();
+  VSyncCallback(vsync_cb);
+
+  /* Main loop */
+  printf("Entering loop...\n");
 
   while (1) {
 
-    ClearOTagR(ot[db], OTLEN); // Clear ordering table
+    /* Clear ordering table and set start address of primitive */
+    /* buffer for next frame */
+    ClearOTagR(ot[db], OT_LEN);
+    nextpri = pribuff[db];
 
-    // Sort textured sprite
+    FntPrint(-1, "FPS: %d", fps);
+    /* Sort a balls snake */
+    sprt = (SPRT_16 *)nextpri;
+    srand(64);
+    for (i = 0; i < 32; i++) {
 
-    sprt = (SPRT *)nextpri;
+      setSprt16(sprt);
+      setXY0(sprt, (CENTER_X - 8) + (isin((counter - (i << 4)) << 3) >> 5),
+             (CENTER_Y - 8) - (icos((counter - (i << 2)) << 3) >> 5));
+      setRGB0(sprt, rand() % 256, rand() % 256, rand() % 256);
+      setUV0(sprt, 0, 0);
+      setClut(sprt, tim.crect->x, tim.crect->y);
 
-    setSprt(sprt);        // Initialize the primitive (very important)
-    setXY0(sprt, 48, 48); // Position the sprite at (48,48)
-    setWH(sprt, 64, 64);  // Set size to 64x64 pixels
-    setUV0(sprt,          // Set UV coordinates
-           tim_uoffs, tim_voffs);
-    setClut(sprt, // Set CLUT coordinates to sprite
-            tim_crect.x, tim_crect.y);
-    setRGB0(sprt, // Set primitive color
-            128, 128, 128);
-    addPrim(ot[db], sprt); // Sort primitive to OT
+      addPrim(ot[db] + (OT_LEN - 1), sprt);
+      sprt++;
+    }
 
-    nextpri += sizeof(SPRT); // Advance next primitive address
+    /* Sort the balls */
+    for (i = 0; i < MAX_BALLS; i++) {
 
-    // Sort untextured tile primitive from the last tutorial
+      setSprt16(sprt);
+      setXY0(sprt, balls[i].x, balls[i].y);
+      setRGB0(sprt, balls[i].r, balls[i].g, balls[i].b);
+      setUV0(sprt, 0, 0);
+      setClut(sprt, tim.crect->x, tim.crect->y);
 
-    tile = (TILE *)nextpri; // Cast next primitive
+      addPrim(ot[db] + (OT_LEN - 1), sprt);
+      sprt++;
 
-    setTile(tile);              // Initialize the primitive (very important)
-    setXY0(tile, 32, 32);       // Set primitive (x,y) position
-    setWH(tile, 64, 64);        // Set primitive size
-    setRGB0(tile, 255, 255, 0); // Set color yellow
-    addPrim(ot[db], tile);      // Add primitive to the ordering table
+      balls[i].x += balls[i].xdir;
+      balls[i].y += balls[i].ydir;
 
-    nextpri += sizeof(TILE); // Advance the next primitive pointer
+      if ((balls[i].x + 16) > 640) {
+        balls[i].xdir = -2;
+      } else if (balls[i].x < 0) {
+        balls[i].xdir = 2;
+      }
 
-    // Update the display
-    display();
+      if ((balls[i].y + 16) > 480) {
+        balls[i].ydir = -2;
+      } else if (balls[i].y < 0) {
+        balls[i].ydir = 2;
+      }
+    }
+    nextpri = (char *)sprt;
+
+    /* Sort a TPage primitive so the sprites will draw pixels from */
+    /* the correct texture page in VRAM */
+    tpri = (DR_TPAGE *)nextpri;
+    setDrawTPage(tpri, 0, 0, getTPage(0, 0, tim.prect->x, tim.prect->y));
+    addPrim(ot[db] + (OT_LEN - 1), tpri);
+    nextpri += sizeof(DR_TPAGE);
+
+    /* Wait for GPU and VSync */
+    DrawSync(0);
+    VSync(0);
+
+    /* Since draw.isbg is non-zero this clears the screen */
+    PutDrawEnv(&draw);
+
+    /* Begin drawing the new frame */
+    DrawOTag(ot[db] + (OT_LEN - 1));
+
+    /* Alternate to the next buffer */
+    db = !db;
+
+    /* Increment counter for the snake animation */
+    counter++;
+    fps_measure++;
+    FntFlush(-1);
   }
 
   return 0;
