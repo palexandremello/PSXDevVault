@@ -1,2 +1,2 @@
 # PSXDevVault
-It's my Vault with "wasted" examples, I will learning about SDK (PSnoobSDK) and about game design.
+"It's my Vault with "wasted" examples. I will be learning about the SDK (PSnoobSDK) and game design."
