@@ -14,33 +14,44 @@
 
 DISPENV disp[2];
 DRAWENV draw[2];
-
 int db = 0;
 
 uint32_t ot[2][ORDER_TABLE_LEN];
 char pribuff[2][32768];
 char *nextpri;
 
+struct Coords {
+    int x;
+    int y;
+    int dx;
+    int dy;
+};
+
 void init(void);
 void display();
 
 int main() {
     TILE *tile1;
-    int x = 0, y = 0, dx = 1, dy = 1;
+    struct Coords coords;
+
+    coords.x = 0;
+    coords.y = 0;
+    coords.dx = 2;
+    coords.dy = 2;
 
     init();
     VSyncCallback(callback_vsync);
     while (1) {
-        x += dx;
-        y += dy;
+        coords.x += coords.dx;
+        coords.y += coords.dy;
 
 
-        if (x < 0 || x > (SCREEN_XRES - 32)) {
-            dx = -dx;
+        if (coords.x < 0 || coords.x > (SCREEN_XRES - 32)) {
+            coords.dx = -coords.dx;
         }
 
-        if (y < 0 || y > (SCREEN_YRES - 32)) {
-            dy = -dy;
+        if (coords.y < 0 || coords.y > (SCREEN_YRES - 32)) {
+            coords.dy = -coords.dy;
         }
         ClearOTagR(ot[db], ORDER_TABLE_LEN);
         FntPrint(-1, "FPS: %d\n", fps_counter.value);
@@ -48,7 +59,7 @@ int main() {
         tile1 = (TILE *)nextpri;
 
         setTile(tile1);
-        setXY0(tile1, x, y);
+        setXY0(tile1, coords.x, coords.y);
         setWH(tile1, 32, 32);
         setRGB0(tile1, 255, 255, 0);
         addPrim(ot[db], tile1); // Add primitive to the ordering table
