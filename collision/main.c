@@ -27,12 +27,49 @@ struct Coords {
     int dy;
 };
 
+typedef struct {
+    int red;
+    int green;
+    int blue;
+} Color;
+
+struct Ball {
+    int x;
+    int y;
+    int w;
+    int h;
+    int radius;
+    Color color;
+};
+
 void init(void);
 void display();
 
 int main() {
     TILE *tile1;
     struct Coords coords;
+    struct Ball ball;
+    Color color;
+
+    color.red = (rand() % 256);
+    color.green = (rand() % 256);
+    color.blue = (rand() %  256);
+
+    ball.w = (rand() % 624);
+    ball.h = (rand() % 464);
+    ball.x = 1 - (rand() % 3);
+    ball.y = 1 - (rand() % 3);
+    if (!ball.x) {
+        ball.x = 1;
+    }
+    if (!ball.y) {
+        ball.y = 1;
+    }
+
+    ball.x *= 2;
+    ball.y *= 2;
+
+    ball.color = color;
 
     coords.x = 0;
     coords.y = 0;
@@ -59,9 +96,9 @@ int main() {
         tile1 = (TILE *)nextpri;
 
         setTile(tile1);
-        setXY0(tile1, coords.x, coords.y);
+        setXY0(tile1, ball.x, ball.y);
         setWH(tile1, 32, 32);
-        setRGB0(tile1, 255, 255, 0);
+        setRGB0(tile1, ball.color.red, ball.color.green, ball.color.blue);
         addPrim(ot[db], tile1); // Add primitive to the ordering table
 
         nextpri += sizeof(TILE);
