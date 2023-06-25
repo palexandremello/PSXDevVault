@@ -21,7 +21,7 @@ DRAWENV draw[2];
 
 int db = 0;
 
-u_long ot[2][ORDER_TABLE_LEN];
+uint32_t ot[2][ORDER_TABLE_LEN];
 char pribuff[2][32768];
 char *nextpri;
 
