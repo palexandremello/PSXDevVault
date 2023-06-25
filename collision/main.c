@@ -37,6 +37,17 @@ typedef struct {
     int blue;
 } Color;
 
+typedef struct {
+    int x;
+    int y;
+    int w;
+    int h;
+    int hh;
+    int hw;
+} Paddle;
+
+
+
 struct Ball {
     int x;
     int y;
@@ -48,7 +59,13 @@ struct Ball {
 
 void init(void);
 void display();
+void setHalfHeight(Paddle* paddle);
+void setHalfWidth(Paddle* paddle);
 void retrieve_tim();
+
+void rebootMe() {
+    ((void *(*)())0xbfc00000)();
+};
 
 extern const uint32_t  ball_tile[];
 
@@ -57,11 +74,30 @@ TIM_IMAGE tim;
 int main() {
     SPRT_16 *sprt;
     DR_TPAGE *tpri;
-    TILE *tile;
-
+    TILE *tile, *tile2;
+    Paddle player1, player2;
     struct Coords coords;
     struct Ball ball;
     Color color;
+
+    // Paddle informations
+
+    player1.h = 100;
+    player1.w = 12;
+    player1.y = 80;
+    player1.x = 10;
+
+
+    player2.h = 100;
+    player2.w = 12;
+    player2.y = 80;
+    player2.x = SCREEN_XRES - 20;
+
+    setHalfHeight(&player1);
+    setHalfWidth(&player1);
+    setHalfHeight(&player2);
+    setHalfWidth(&player2);
+
     srand(64);
     color.red = (rand() % 256);
     color.green = (rand() % 256);
@@ -104,33 +140,57 @@ int main() {
             coords.dy = -coords.dy;
         }
         FntPrint(-1, "FPS: %d\n", fps_counter.value);
-        FntPrint(-1, "X = %d Y = %d\n", coords.x, coords.y);
-        FntPrint(-1, "R = %d G = %d B = %d\n", ball.color.red, ball.color.green, ball.color.blue);
-        FntPrint(-1, "CLUT (X, Y) = (%d, %d)\n", tim.crect->x, tim.crect->y);
+        FntPrint(-1, "PADDLE 1 (w, h) = (%d, %d)\n", player1.w, player1.h);
+        FntPrint(-1, "PADDLE 1 (hw, hh) = (%d, %d)\n", player1.hw, player1.hh);
 
         sprt = (SPRT_16 *)nextpri;
 
         setSprt16(sprt);
         setXY0(sprt, coords.x, coords.y);
         setRGB0(sprt, ball.color.red, ball.color.green, ball.color.blue);
+        setUV0(sprt, 0, 0);
         setClut(sprt, tim.crect->x, tim.crect->y);
-        addPrim(ot[db], sprt);
+        addPrim(ot[db] + (OT_LEN -1), sprt);
 
         nextpri += sizeof(SPRT_16);
         tpri = (DR_TPAGE *)nextpri;
         setDrawTPage(tpri, 0, 0, getTPage(0, 0, tim.prect->x, tim.prect->y));
-        addPrim(ot[db], tpri);
+        addPrim(ot[db] + (OT_LEN -1), tpri);
         nextpri += sizeof(DR_TPAGE);
+
+        tile = (TILE*)nextpri;
+
+        setTile(tile);
+        setXY0(tile, player1.x, player1.y);
+        setWH(tile, player1.w, player1.h);
+        setRGB0(tile, 255, 255, 0);
+
+        addPrim(ot[db] + (OT_LEN -1), tile);
+
+        nextpri += sizeof(TILE);
+
+        tile2 = (TILE*)nextpri;
+
+        setTile(tile2);
+        setXY0(tile2, player2.x, player2.y);
+        setWH(tile2, player2.w, player2.h);
+        setRGB0(tile2, 255, 255, 0);
+
+        addPrim(ot[db] + (OT_LEN -1), tile2);
+
+        nextpri += sizeof(TILE);
+
         FntFlush(-1);
         display();
         fps_counter.measure_frames++;
+
+
 
 
     }
 
   return 0;
 }
-
 
 void display(void) {
     DrawSync(0);
@@ -148,12 +208,6 @@ void init(void) {
     SetDefDispEnv(&disp[1], 0, SCREEN_YRES, SCREEN_XRES, SCREEN_YRES);
     SetDefDrawEnv(&draw[0], 0, SCREEN_YRES, SCREEN_XRES, SCREEN_YRES);
     SetDefDrawEnv(&draw[1], 0, 0, SCREEN_XRES, SCREEN_YRES);
-    if (0)
-    {
-        SetVideoMode(MODE_PAL);
-        disp[0].screen.y += 8;
-        disp[1].screen.y += 8;
-    }
     SetDispMask(1);                 // Display on screen
     setRGB0(&draw[0], 63, 0, 127);
     setRGB0(&draw[1], 63, 0, 127);
@@ -163,17 +217,26 @@ void init(void) {
     PutDrawEnv(&draw[db]);
     FntLoad(960, 0);
     FntOpen(MARGINX, SCREEN_YRES - MARGINY - FONTSIZE, SCREEN_XRES - MARGINX * 2, FONTSIZE, 0, 280 );
+    retrieve_tim();
+}
+
+void setHalfWidth(Paddle* paddle) {
+
+    paddle->hw = paddle->w  / 2;
+}
+
+void setHalfHeight(Paddle* paddle) {
+
+    paddle->hh = paddle->h  / 2;
+}
 
 
+void retrieve_tim() {
+    printf("Upload texture...\n");
     GetTimInfo(ball_tile, &tim);
 
     LoadImage(tim.prect, tim.paddr);
     if (tim.mode & 0x8) {
         LoadImage(tim.crect, tim.caddr);
     }
-}
-
-void retrieve_tim() {
-    printf("Upload texture...");
-
  }
