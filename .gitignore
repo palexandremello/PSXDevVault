@@ -8,5 +8,8 @@
 *.a
 PSX.Dev-README.md
 third_party/psyq
-*/*/cmake-build-debug
+*/cmake-build-debug
+*/comport.txt
+.idea
+.vscode
 */build/*
