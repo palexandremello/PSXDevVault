@@ -2,6 +2,8 @@
 #include <psxgpu.h>
 #include <psxetc.h>
 #include <psxgte.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "initialize.h"
 
 
@@ -17,7 +19,7 @@ DRAWENV draw[2];
 int db = 0;
 
 uint32_t ot[2][ORDER_TABLE_LEN];
-char pribuff[2][32768];
+char pribuff[2][1024 * 64];
 char *nextpri;
 
 struct Coords {
@@ -44,13 +46,17 @@ struct Ball {
 
 void init(void);
 void display();
+void retrieve_tim();
 
 int main() {
-    TILE *tile1;
+    SPRT_16 *sprt;
+    DR_TPAGE *tpri;
+    TILE *tile;
+
     struct Coords coords;
     struct Ball ball;
     Color color;
-
+    srand(64);
     color.red = (rand() % 256);
     color.green = (rand() % 256);
     color.blue = (rand() %  256);
@@ -75,10 +81,11 @@ int main() {
     coords.y = 0;
     coords.dx = 2;
     coords.dy = 2;
-
     init();
+    // retrieve_tim();
     VSyncCallback(callback_vsync);
     while (1) {
+        ClearOTagR(ot[db], ORDER_TABLE_LEN);
         coords.x += coords.dx;
         coords.y += coords.dy;
 
@@ -90,24 +97,23 @@ int main() {
         if (coords.y < 0 || coords.y > (SCREEN_YRES - 32)) {
             coords.dy = -coords.dy;
         }
-        ClearOTagR(ot[db], ORDER_TABLE_LEN);
         FntPrint(-1, "FPS: %d\n", fps_counter.value);
+        FntPrint(-1, "X = %d Y = %d\n", coords.x, coords.y);
+        FntPrint(-1, "R = %d G = %d B = %d\n", ball.color.red, ball.color.green, ball.color.blue);
+        FntFlush(-1);
 
-        tile1 = (TILE *)nextpri;
+        tile = (TILE *)nextpri;
 
-        setTile(tile1);
-        setXY0(tile1, ball.x, ball.y);
-        setWH(tile1, 32, 32);
-        setRGB0(tile1, ball.color.red, ball.color.green, ball.color.blue);
-        addPrim(ot[db], tile1); // Add primitive to the ordering table
+        setTile(tile);
+        setXY0(tile, coords.x, coords.y);
+        setWH(tile, 32, 32);
+        setRGB0(tile, ball.color.red, ball.color.green, ball.color.blue);
+        addPrim(ot[db], tile);
 
         nextpri += sizeof(TILE);
 
-
-        printf("FPS: %d\n", fps_counter.value);
         fps_counter.measure_frames++;
         display();
-        FntFlush(-1);
 
 
     }
@@ -116,17 +122,20 @@ int main() {
 }
 
 
-void display() {
+void display(void) {
     DrawSync(0);
     VSync(0);
+
     PutDispEnv(&disp[db]);
     PutDrawEnv(&draw[db]);
+
     SetDispMask(1);
+
     DrawOTag(ot[db] + ORDER_TABLE_LEN - 1);
     db = !db;
-    nextpri = pribuff[db];
 
-};
+    nextpri = pribuff[db];
+}
 
 void init(void) {
     ResetGraph(0);
@@ -137,13 +146,25 @@ void init(void) {
     SetDefDrawEnv(&draw[1], 0, 0, SCREEN_XRES, SCREEN_YRES);
 
     draw[0].isbg = 1;
-    setRGB0(&draw[0], 63, 0, 120);
+    setRGB0(&draw[0], 0, 0, 0);
     draw[1].isbg = 1;
-    setRGB0(&draw[1], 63, 0, 120);
+    setRGB0(&draw[1], 0, 0, 0);
 
-    nextpri = pribuff[0];
+    PutDispEnv(&disp[0]);
+    PutDispEnv(&disp[1]);
 
-
+    db = 0;
+    nextpri = pribuff[0]; // Set initial primitive pointer address
     FntLoad(960, 256);
     FntOpen(0, 8, 320, 224, 0, 100);
 }
+
+//void retrieve_tim() {
+//    printf("Upload texture...");
+//    GetTimInfo(ball_tile, &tim);
+//
+//    LoadImage(tim.prect, tim.paddr);
+//    if (tim.mode & 0x8) {
+//        LoadImage(tim.crect, tim.caddr);
+//    }
+// }

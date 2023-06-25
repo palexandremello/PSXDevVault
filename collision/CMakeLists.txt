@@ -11,4 +11,4 @@ project(
 
 psn00bsdk_add_executable(collision GPREL main.c initialize.h initialize.c)
 
-#psn00bsdk_target_incbin(tile PRIVATE tim_igu_tile ball16c.tim)
+psn00bsdk_target_incbin(collision PRIVATE ball_tile ball16c.tim)
