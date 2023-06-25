@@ -113,24 +113,7 @@ int main() {
         nextpri += sizeof(TILE);
 
 
-        sprt = (SPRT_16 *)nextpri;
-
-        setSprt16(sprt);
-        setXY0(sprt, CENTER_X, CENTER_Y);
-        setRGB0(sprt, ball.color.red, ball.color.green, ball.color.blue);
-        setUV0(sprt, 0, 0);
-        setClut(sprt, tim.crect->x, tim.crect->y);
-
-        addPrim(ot[db] + ORDER_TABLE_LEN - 1, sprt);
-
-        nextpri += sizeof(sprt);
-
-        tpri = (DR_TPAGE *)nextpri;
-        setDrawTPage(tpri, 0, 0, getTPage(0, 0, tim.prect->x, tim.prect->y));
-        addPrim(ot[db] + ORDER_TABLE_LEN - 1, tpri);
-
-        nextpri += sizeof(DR_TPAGE);
-
+        
         fps_counter.measure_frames++;
         display();
 
