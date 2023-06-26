@@ -71,15 +71,15 @@ int main() {
 
     // Paddle informations
 
-    player1.h = 100;
+    player1.h = 42;
     player1.w = 12;
-    player1.y = 80;
+    player1.y = CENTER_Y - 42;
     player1.x = 10;
 
 
-    player2.h = 100;
+    player2.h = 42;
     player2.w = 12;
-    player2.y = 80;
+    player2.y = CENTER_Y - 42;
     player2.x = SCREEN_XRES - 20;
 
     setHalfHeight(&player1);
