@@ -35,17 +35,6 @@ typedef struct {
     int blue;
 } Color;
 
-typedef struct {
-    int x;
-    int y;
-    int w;
-    int h;
-    int hh;
-    int hw;
-} Paddle;
-
-
-
 struct Ball {
     int x;
     int y;
@@ -148,7 +137,7 @@ int main() {
         FntPrint(-1, "PADDLE 1 (w, h) = (%d, %d)\n", player1.w, player1.h);
         FntPrint(-1, "PADDLE 1 (hw, hh) (%d, %d)\n", player1.hw, player1.hh);
 
-        handlerControllerInput(controller1);
+        handlerControllerInput(controller1, &player1);
         sprt = (SPRT_16 *)nextpri;
 
         setSprt16(sprt);

@@ -11,6 +11,16 @@
 
 extern char buffer[NUM_CONTROLLERS][34];
 
-void handlerControllerInput(PADTYPE* controller);
+typedef struct {
+    int x;
+    int y;
+    int w;
+    int h;
+    int hh;
+    int hw;
+} Paddle;
+
+
+void handlerControllerInput(PADTYPE* controller, Paddle* paddle);
 void initControllers();
 #endif //CONTROLLER_H

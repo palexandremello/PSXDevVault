@@ -11,19 +11,18 @@ void initControllers() {
     ChangeClearPAD(0);
 }
 
-void handlerControllerInput(PADTYPE* controller) {
-    printf("%s", controller);
+void handlerControllerInput(PADTYPE* controller, Paddle* paddle) {
     if (controller->stat == 0) {
 
         if ((controller->type == 0x4) || (controller->type == 0x5) || (controller->type == 0x7)) {
 
             if (!(controller->btn & PAD_UP)) {
-               printf("Subir o paddle\n");
+                paddle->y = paddle->y  - 2;
             } else if (!(controller->btn & PAD_DOWN)) {
-               printf("Descer o Paddle\n");
+                paddle->y = paddle->y  + 2;
             }
             if (!(controller->btn & PAD_SELECT)) {
-                printf("Restar o PS1\n");
+                printf("Resetar o PS1\n");
             }
         }
     }
