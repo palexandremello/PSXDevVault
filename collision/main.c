@@ -121,6 +121,7 @@ int main() {
         ClearOTagR(ot[db], OT_LEN);
 
         controller1 = (PADTYPE *)&buffer[0][0];
+        controller2 = (PADTYPE *)&buffer[1][0];
         coords.x += coords.dx;
         coords.y += coords.dy;
 
