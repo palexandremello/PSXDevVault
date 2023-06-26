@@ -64,7 +64,7 @@ int main() {
     DR_TPAGE *tpri;
     TILE *tile, *tile2;
     Paddle player1, player2;
-    PADTYPE  *controller1;
+    PADTYPE  *controller1, *controller2;
     struct Coords coords;
     struct Ball ball;
     Color color;
@@ -138,6 +138,8 @@ int main() {
         FntPrint(-1, "PADDLE 1 (hw, hh) (%d, %d)\n", player1.hw, player1.hh);
 
         handlerControllerInput(controller1, &player1);
+        handlerControllerInput(controller2, &player2);
+
         sprt = (SPRT_16 *)nextpri;
 
         setSprt16(sprt);

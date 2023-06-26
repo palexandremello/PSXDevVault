@@ -27,5 +27,20 @@ void handlerControllerInput(PADTYPE* controller, Paddle* paddle) {
         }
     }
 
+    if (controller->stat == 1) {
+
+        if ((controller->type == 0x4) || (controller->type == 0x5) || (controller->type == 0x7)) {
+
+            if (!(controller->btn & PAD_UP)) {
+                paddle->y = paddle->y  - 2;
+            } else if (!(controller->btn & PAD_DOWN)) {
+                paddle->y = paddle->y  + 2;
+            }
+            if (!(controller->btn & PAD_SELECT)) {
+                printf("Resetar o PS1\n");
+            }
+        }
+    }
+
 
 }
