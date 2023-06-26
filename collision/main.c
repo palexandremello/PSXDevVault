@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "initialize.h"
-
+#include "controller.h"
 
 #define OT_LEN 8
 #define SCREEN_XRES 320
@@ -124,6 +124,7 @@ int main() {
     coords.dx = 1;
     coords.dy = 1;
     init();
+    controller_init();
     VSyncCallback(callback_vsync);
     while (1) {
         ClearOTagR(ot[db], OT_LEN);

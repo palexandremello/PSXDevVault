@@ -5,12 +5,18 @@
 
 typedef struct {
     PADTYPE pad;
-} PlayerController;
+} PlayerPad;
+
+typedef struct {
+    char buffer[2][34];
+} Controller;
 
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
 void controller_init(void);
+void init_buffer_controller(void );
 
-extern PlayerController player_controller;
+extern Controller controller;
+extern PlayerPad player_pad;
 #endif //CONTROLLER_H
