@@ -2,21 +2,15 @@
 // Created by pmello on 6/25/23.
 //
 #include <psxpad.h>
+#include <psxapi.h>
 
-typedef struct {
-    PADTYPE pad;
-} PlayerPad;
-
-typedef struct {
-    char buffer[2][34];
-} Controller;
+#define NUM_CONTROLLERS 2
 
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
-void controller_init(void);
-void init_buffer_controller(void );
+extern char buffer[NUM_CONTROLLERS][34];
 
-extern Controller controller;
-extern PlayerPad player_pad;
+void handlerControllerInput(PADTYPE* controller);
+void initControllers();
 #endif //CONTROLLER_H

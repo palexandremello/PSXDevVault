@@ -1,11 +1,9 @@
 
-#include <psxgpu.h>
-#include <psxetc.h>
-#include <psxgte.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "initialize.h"
+#include <psxgpu.h>
 #include "controller.h"
+#include "initialize.h"
 
 #define OT_LEN 8
 #define SCREEN_XRES 320
@@ -67,6 +65,7 @@ void rebootMe() {
     ((void *(*)())0xbfc00000)();
 };
 
+char buffer[2][34];
 extern const uint32_t  ball_tile[];
 
 TIM_IMAGE tim;
@@ -76,6 +75,7 @@ int main() {
     DR_TPAGE *tpri;
     TILE *tile, *tile2;
     Paddle player1, player2;
+    PADTYPE  *controller1;
     struct Coords coords;
     struct Ball ball;
     Color color;
@@ -123,12 +123,15 @@ int main() {
     coords.y = 0;
     coords.dx = 1;
     coords.dy = 1;
+
+    int x = 0, y = 0;
     init();
-    controller_init();
+    initControllers();
     VSyncCallback(callback_vsync);
     while (1) {
         ClearOTagR(ot[db], OT_LEN);
 
+        controller1 = (PADTYPE *)&buffer[0][0];
         coords.x += coords.dx;
         coords.y += coords.dy;
 
@@ -140,10 +143,12 @@ int main() {
         if (coords.y < 0 || coords.y > (SCREEN_YRES - 16)) {
             coords.dy = -coords.dy;
         }
+
         FntPrint(-1, "FPS: %d\n", fps_counter.value);
         FntPrint(-1, "PADDLE 1 (w, h) = (%d, %d)\n", player1.w, player1.h);
         FntPrint(-1, "PADDLE 1 (hw, hh) (%d, %d)\n", player1.hw, player1.hh);
 
+        handlerControllerInput(controller1);
         sprt = (SPRT_16 *)nextpri;
 
         setSprt16(sprt);
@@ -216,6 +221,13 @@ void init(void) {
     draw[1].isbg = 1;
     PutDispEnv(&disp[db]);
     PutDrawEnv(&draw[db]);
+
+    InitPAD(&buffer[0][0], 34, &buffer[1][0], 34);
+
+    StartPAD();
+
+    ChangeClearPAD(0);
+
     FntLoad(960, 0);
     FntOpen(MARGINX, SCREEN_YRES - MARGINY - FONTSIZE, SCREEN_XRES - MARGINX * 2, FONTSIZE, 0, 280 );
     retrieve_tim();
