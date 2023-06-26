@@ -141,7 +141,7 @@ int main() {
         }
         FntPrint(-1, "FPS: %d\n", fps_counter.value);
         FntPrint(-1, "PADDLE 1 (w, h) = (%d, %d)\n", player1.w, player1.h);
-        FntPrint(-1, "PADDLE 1 (hw, hh) = (%d, %d)\n", player1.hw, player1.hh);
+        FntPrint(-1, "PADDLE 1 (hw, hh) (%d, %d)\n", player1.hw, player1.hh);
 
         sprt = (SPRT_16 *)nextpri;
 
